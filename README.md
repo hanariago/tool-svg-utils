@@ -3,7 +3,7 @@
 SVG 관련 유틸 2종을 탭 구조로 묶은 **단일 HTML** 웹 도구입니다.
 모든 처리는 브라우저 안에서만 이루어지며 **어떤 파일도 서버로 전송되지 않습니다.**
 
-🔗 **데모:** `https://<github-username>.github.io/tool-svg-utils/`
+🔗 **라이브 데모:** <https://hanariago.github.io/tool-svg-utils/>
 
 ---
 
