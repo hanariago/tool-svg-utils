@@ -1,0 +1,32 @@
+# SVG 변환기 (SVG Converter / SVG Utils)
+
+> 브라우저에서 100% 동작하는 무료 SVG 도구. SVG를 미리보고 PNG·JPG로 내보내거나, PNG·JPG 이미지를 SVG로 변환한다. 업로드한 파일은 서버로 전송되지 않는다.
+> A free, fully in-browser SVG tool: preview SVGs and export them as PNG/JPG, or convert PNG/JPG images into SVG. No file is ever sent to a server.
+
+- URL: https://hanariago.github.io/tool-svg-utils/
+- Source: https://github.com/hanariago/tool-svg-utils
+- 가격 / Price: 무료 / Free (no login, no install)
+- 언어 / Languages: 한국어, English
+- 개인정보 / Privacy: 모든 처리는 브라우저에서만. 서버 전송·저장 없음 / Client-side only, no upload
+
+## 기능 / Features
+
+- 탭 1 — SVG 뷰어: SVG 파일 업로드 또는 코드 붙여넣기 → 실시간 미리보기 → PNG/JPG 다운로드(1×~4× 또는 가로 px 직접 입력) → SVG 저장, 코드 토글
+- 탭 2 — 이미지 → SVG:
+  - 벡터 트레이싱(ImageTracer.js): 윤곽을 실제 벡터 경로로 변환. 로고·아이콘·흑백·단순 이미지 권장. 흑백/컬러 모드, 색상 수, 디테일 조절
+  - SVG embed: 원본 이미지를 base64로 SVG에 담음. 화질 100% 보존. 컬러 사진 권장
+- Tab 1 — SVG viewer: upload/paste → live preview → PNG/JPG export (1×–4× or custom width) → save SVG, toggle code
+- Tab 2 — image to SVG: vector tracing (ImageTracer.js) for logos/icons/B&W; SVG embed (base64) for color photos
+
+## FAQ
+
+- 벡터 트레이싱 vs SVG embed: 트레이싱은 진짜 벡터(무한 확대), 단순·흑백 이미지에 적합. embed는 원본을 그대로 담아 화질 보존, 컬러 사진에 적합.
+- Vector tracing vs SVG embed: tracing makes true scalable vectors (best for simple/B&W art); embed keeps the original bitmap (best for color photos).
+- 서버 전송 여부 / Server upload: 없음. 외부 통신은 트레이싱 라이브러리 1회 로드뿐 / None, except loading the tracing library once.
+- 해상도 / Resolution: SVG→PNG/JPG 저장 시 배율·가로 px 선택 가능 / Selectable scale or custom width.
+
+## 기술 / Tech & License
+
+- 단일 HTML 파일, 순수 HTML/CSS/JS / Single HTML file, vanilla JS
+- 자체 코드 / Own code: MIT License
+- ImageTracer.js (Unlicense, public domain) — https://github.com/jankovicsandras/imagetracerjs (CDN, SRI-pinned)

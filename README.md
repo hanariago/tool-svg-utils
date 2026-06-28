@@ -88,3 +88,7 @@ python -m http.server 8000
   - [ImageTracer.js](https://github.com/jankovicsandras/imagetracerjs) — Unlicense (퍼블릭 도메인). CDN(SRI 고정): `cdn.jsdelivr.net/npm/imagetracerjs@1.2.6/imagetracer_v1.2.6.js`
 
 MIT와 Unlicense는 모두 상업적 사용을 포함해 자유롭게 사용·수정·배포할 수 있습니다.
+
+---
+
+Made by [Lena](https://x.com/thezenvoid) · License: MIT (ImageTracer.js는 Unlicense) · 🔧 [다른 도구 모음](https://hanariago.github.io/tools-hub/)
