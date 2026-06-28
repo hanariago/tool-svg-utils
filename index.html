@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SVG 유틸 · 뷰어 & 이미지 변환기</title>
+<meta name="description" content="브라우저에서 100% 동작하는 SVG 미리보기 / PNG·JPG 다운로드 / 이미지→SVG 변환 도구. 서버 전송 없음.">
+<style>
+  :root {
+    --bg: #F7F5F0;
+    --point: #3D6B5E;
+    --point-dark: #2F5449;
+    --point-tint: #E8EFEC;
+    --card: #FFFFFF;
+    --card-2: #FCFBF8;
+    --text: #2A2A28;
+    --muted: #6F6F69;
+    --border: #E3DFD6;
+    --border-strong: #CFCABE;
+    --danger: #B4452F;
+    --radius: 12px;
+    --shadow: 0 1px 2px rgba(45, 40, 30, .04), 0 6px 20px rgba(45, 40, 30, .05);
+    --font: "Apple SD Gothic Neo", "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono: "SFMono-Regular", ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 28px 20px 80px;
+  }
+
+  /* ---------- Header ---------- */
+  header.site {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+  .logo {
+    width: 40px; height: 40px;
+    flex: none;
+    border-radius: 10px;
+    background: var(--point);
+    display: grid; place-items: center;
+    color: #fff;
+  }
+  .logo svg { width: 24px; height: 24px; display: block; }
+  header.site h1 {
+    font-size: 20px;
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: -.01em;
+  }
+  header.site p {
+    margin: 1px 0 0;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .ghlink {
+    margin-left: auto;
+    font-size: 13px;
+    color: var(--muted);
+    text-decoration: none;
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 20px;
+    white-space: nowrap;
+    transition: .15s;
+  }
+  .ghlink:hover { border-color: var(--border-strong); color: var(--text); }
+
+  /* ---------- Tabs ---------- */
+  .tabs {
+    display: flex;
+    gap: 6px;
+    background: #EDEAE2;
+    padding: 5px;
+    border-radius: 14px;
+    margin-bottom: 22px;
+  }
+  .tab {
+    flex: 1;
+    appearance: none;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--muted);
+    padding: 11px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: .15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+  }
+  .tab svg { width: 17px; height: 17px; }
+  .tab:hover { color: var(--text); }
+  .tab[aria-selected="true"] {
+    background: var(--card);
+    color: var(--point);
+    box-shadow: var(--shadow);
+  }
+
+  .panel { display: none; }
+  .panel.active { display: block; animation: fade .2s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* ---------- Layout grid ---------- */
+  .cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    align-items: start;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px;
+  }
+  .card h2 {
+    font-size: 14px;
+    margin: 0 0 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card h2 .step {
+    width: 20px; height: 20px;
+    background: var(--point-tint);
+    color: var(--point-dark);
+    border-radius: 6px;
+    font-size: 12px;
+    display: grid; place-items: center;
+    font-weight: 700;
+  }
+
+  /* ---------- Dropzone ---------- */
+  .drop {
+    border: 1.5px dashed var(--border-strong);
+    border-radius: 10px;
+    background: var(--card-2);
+    padding: 26px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: .15s;
+  }
+  .drop:hover, .drop.over {
+    border-color: var(--point);
+    background: var(--point-tint);
+  }
+  .drop .ico { color: var(--point); margin-bottom: 8px; }
+  .drop .ico svg { width: 30px; height: 30px; }
+  .drop strong { display: block; font-size: 14px; font-weight: 600; }
+  .drop span { font-size: 12.5px; color: var(--muted); }
+
+  .divider {
+    display: flex; align-items: center; gap: 10px;
+    color: var(--muted); font-size: 12px;
+    margin: 14px 0;
+  }
+  .divider::before, .divider::after {
+    content: ""; flex: 1; height: 1px; background: var(--border);
+  }
+
+  textarea.code {
+    width: 100%;
+    min-height: 130px;
+    resize: vertical;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--text);
+    background: var(--card-2);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 11px 12px;
+    outline: none;
+    transition: .15s;
+  }
+  textarea.code:focus { border-color: var(--point); box-shadow: 0 0 0 3px var(--point-tint); }
+
+  /* ---------- Preview ---------- */
+  .preview {
+    min-height: 220px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    overflow: auto;
+    background-color: #fff;
+    background-image:
+      linear-gradient(45deg, #EFECE4 25%, transparent 25%),
+      linear-gradient(-45deg, #EFECE4 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #EFECE4 75%),
+      linear-gradient(-45deg, transparent 75%, #EFECE4 75%);
+    background-size: 18px 18px;
+    background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+  }
+  .preview svg, .preview img { max-width: 100%; height: auto; display: block; }
+  .preview .placeholder {
+    color: var(--muted);
+    font-size: 13px;
+    text-align: center;
+    background: rgba(255,255,255,.7);
+    padding: 8px 14px;
+    border-radius: 8px;
+  }
+
+  /* ---------- Controls ---------- */
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .row + .row { margin-top: 12px; }
+
+  label.field { font-size: 13px; font-weight: 600; color: var(--text); display: block; margin-bottom: 6px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 5px; }
+
+  select, input[type="number"] {
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--card);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    padding: 8px 10px;
+    outline: none;
+  }
+  select:focus, input:focus { border-color: var(--point); box-shadow: 0 0 0 3px var(--point-tint); }
+
+  /* segmented */
+  .seg { display: inline-flex; background: #EDEAE2; padding: 4px; border-radius: 9px; gap: 4px; }
+  .seg button {
+    appearance: none; border: none; background: transparent;
+    font-family: inherit; font-size: 13px; font-weight: 600; color: var(--muted);
+    padding: 6px 13px; border-radius: 6px; cursor: pointer; transition: .12s;
+  }
+  .seg button[aria-pressed="true"] { background: var(--card); color: var(--point); box-shadow: var(--shadow); }
+
+  .btn {
+    appearance: none;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 9px;
+    padding: 10px 16px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: .15s;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .btn svg { width: 16px; height: 16px; }
+  .btn.primary { background: var(--point); color: #fff; }
+  .btn.primary:hover { background: var(--point-dark); }
+  .btn.ghost { background: var(--card); color: var(--text); border-color: var(--border-strong); }
+  .btn.ghost:hover { border-color: var(--point); color: var(--point); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+  .meta {
+    font-size: 12.5px; color: var(--muted);
+    background: var(--card-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 11px;
+    margin-top: 12px;
+    display: flex; flex-wrap: wrap; gap: 4px 16px;
+  }
+  .meta b { color: var(--text); font-weight: 600; }
+
+  /* method cards (tab 2) */
+  .methods { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .method {
+    border: 1.5px solid var(--border);
+    border-radius: 11px;
+    padding: 14px;
+    cursor: pointer;
+    transition: .15s;
+    background: var(--card-2);
+  }
+  .method:hover { border-color: var(--border-strong); }
+  .method[aria-pressed="true"] { border-color: var(--point); background: var(--point-tint); }
+  .method .mt { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 7px; margin-bottom: 5px; }
+  .method .mt .badge {
+    font-size: 10.5px; font-weight: 700; background: var(--point); color: #fff;
+    padding: 2px 7px; border-radius: 20px; letter-spacing: .02em;
+  }
+  .method .md { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+  .method ul { margin: 8px 0 0; padding-left: 16px; font-size: 12px; color: var(--muted); }
+  .method li { margin: 2px 0; }
+
+  .notice {
+    font-size: 12.5px; line-height: 1.55;
+    background: var(--point-tint);
+    border: 1px solid #CFE0D9;
+    border-radius: 9px;
+    padding: 11px 13px;
+    color: var(--point-dark);
+    margin-top: 14px;
+  }
+  .notice b { font-weight: 700; }
+
+  .spinner {
+    width: 15px; height: 15px;
+    border: 2px solid rgba(255,255,255,.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(20px);
+    background: var(--text); color: #fff;
+    font-size: 13.5px; font-weight: 500;
+    padding: 11px 18px; border-radius: 10px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.18);
+    opacity: 0; pointer-events: none; transition: .25s;
+    z-index: 50; max-width: 90vw;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.err { background: var(--danger); }
+
+  .hidden { display: none !important; }
+
+  footer.site {
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 40px;
+    line-height: 1.7;
+  }
+  footer.site a { color: var(--point); text-decoration: none; }
+  footer.site a:hover { text-decoration: underline; }
+
+  /* ---------- Mobile ---------- */
+  @media (max-width: 720px) {
+    .wrap { padding: 18px 14px 60px; }
+    .cols { grid-template-columns: 1fr; gap: 14px; }
+    .methods { grid-template-columns: 1fr; }
+    header.site h1 { font-size: 17px; }
+    .ghlink { display: none; }
+    .tab { font-size: 13.5px; padding: 10px 6px; }
+    .tab span.lbl { display: inline; }
+    .card { padding: 15px; }
+    .seg button { padding: 6px 10px; }
+  }
+  @media (max-width: 380px) {
+    .tab span.lbl { font-size: 12.5px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="site">
+    <div class="logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 7V4h16v3M9 20h6M12 4v16"/>
+      </svg>
+    </div>
+    <div>
+      <h1>SVG 유틸</h1>
+      <p>뷰어 · PNG/JPG 변환 · 이미지→SVG · 브라우저에서 100% 동작, 서버 전송 없음</p>
+    </div>
+    <a class="ghlink" id="repoLink" href="#" target="_blank" rel="noopener">GitHub ↗</a>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="도구 선택">
+    <button class="tab" role="tab" id="tabbtn-1" aria-selected="true" aria-controls="panel-1" data-tab="1">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+      <span class="lbl">SVG 뷰어 / 변환</span>
+    </button>
+    <button class="tab" role="tab" id="tabbtn-2" aria-selected="false" aria-controls="panel-2" data-tab="2">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15l-5-5L5 21"/><path d="M3 6h7M6.5 2.5v7"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+      <span class="lbl">이미지 → SVG</span>
+    </button>
+  </div>
+
+  <!-- ================= TAB 1 ================= -->
+  <section class="panel active" id="panel-1" role="tabpanel" aria-labelledby="tabbtn-1">
+    <div class="cols">
+      <!-- input -->
+      <div class="card">
+        <h2><span class="step">1</span> SVG 불러오기</h2>
+        <div class="drop" id="svgDrop" tabindex="0" role="button" aria-label="SVG 파일 업로드">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 20h14"/></svg></div>
+          <strong>SVG 파일을 끌어다 놓거나 클릭</strong>
+          <span>.svg 파일 선택</span>
+          <input type="file" id="svgFile" accept=".svg,image/svg+xml" class="hidden">
+        </div>
+        <div class="divider">또는 코드 붙여넣기</div>
+        <textarea class="code" id="svgInput" placeholder="<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; ...> ... </svg>" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
+        <div class="row" style="margin-top:12px;">
+          <button class="btn ghost" id="svgClear">비우기</button>
+          <button class="btn ghost" id="svgSample">예시 넣기</button>
+        </div>
+      </div>
+
+      <!-- output -->
+      <div class="card">
+        <h2><span class="step">2</span> 미리보기 &amp; 내보내기</h2>
+        <div class="preview" id="svgPreview" aria-live="polite">
+          <div class="placeholder">SVG를 불러오면 여기에 표시됩니다.</div>
+        </div>
+        <div class="meta hidden" id="svgMeta"></div>
+
+        <div class="row" style="margin-top:14px;">
+          <div>
+            <label class="field" for="pngScale">해상도 배율</label>
+            <select id="pngScale">
+              <option value="1">1× (원본)</option>
+              <option value="2" selected>2×</option>
+              <option value="3">3×</option>
+              <option value="4">4×</option>
+              <option value="custom">직접 입력…</option>
+            </select>
+          </div>
+          <div id="customWidthWrap" class="hidden">
+            <label class="field" for="customWidth">가로 px</label>
+            <input type="number" id="customWidth" min="1" max="10000" step="1" value="1024" style="width:110px;">
+          </div>
+          <div id="outDimWrap" style="align-self:flex-end; padding-bottom:8px;" class="hint"></div>
+        </div>
+
+        <div class="row" style="margin-top:14px;">
+          <button class="btn primary" id="dlPng" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 11l4 4 4-4"/><path d="M4 21h16"/></svg>
+            PNG 다운로드
+          </button>
+          <button class="btn primary" id="dlJpg" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 11l4 4 4-4"/><path d="M4 21h16"/></svg>
+            JPG 다운로드
+          </button>
+          <button class="btn ghost" id="dlSvg" disabled>SVG 저장</button>
+          <button class="btn ghost" id="toggleCode" disabled aria-pressed="true">코드 숨기기</button>
+        </div>
+        <div class="hint" style="margin-top:10px;">JPG는 투명 배경이 흰색으로 채워집니다. 큰 배율은 파일이 커질 수 있어요.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= TAB 2 ================= -->
+  <section class="panel" id="panel-2" role="tabpanel" aria-labelledby="tabbtn-2">
+    <div class="cols">
+      <!-- input + options -->
+      <div class="card">
+        <h2><span class="step">1</span> 이미지 업로드 &amp; 방식 선택</h2>
+        <div class="drop" id="imgDrop" tabindex="0" role="button" aria-label="이미지 업로드">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15l-5-5L5 21"/><circle cx="8.5" cy="8.5" r="1.5"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>
+          <strong>PNG / JPG 이미지를 끌어다 놓거나 클릭</strong>
+          <span>png · jpg · jpeg · webp · gif</span>
+          <input type="file" id="imgFile" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden">
+        </div>
+
+        <div class="methods" style="margin-top:16px;">
+          <div class="method" id="m-trace" role="button" aria-pressed="true" tabindex="0">
+            <div class="mt">벡터 트레이싱 <span class="badge">권장: 흑백·로고</span></div>
+            <div class="md">윤곽선을 따라 실제 벡터 경로(path)로 변환. 무한 확대해도 깨지지 않음.</div>
+            <ul>
+              <li>로고, 아이콘, 단순 일러스트, 흑백 스캔에 적합</li>
+              <li>사진은 디테일이 뭉개지고 path가 비대해짐</li>
+            </ul>
+          </div>
+          <div class="method" id="m-embed" role="button" aria-pressed="false" tabindex="0">
+            <div class="mt">SVG Embed</div>
+            <div class="md">원본 이미지를 base64로 SVG 안에 그대로 담음. 화질 100% 보존.</div>
+            <ul>
+              <li>컬러 사진, 복잡한 그래픽에 적합</li>
+              <li>진짜 벡터는 아님 — 확대하면 원본만큼만 선명</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- trace options -->
+        <div id="traceOpts">
+          <div class="row">
+            <div>
+              <label class="field">모드</label>
+              <div class="seg" id="traceMode">
+                <button data-mode="bw" aria-pressed="true">흑백</button>
+                <button data-mode="color" aria-pressed="false">컬러</button>
+              </div>
+            </div>
+            <div>
+              <label class="field" for="traceColors">색상 수</label>
+              <select id="traceColors">
+                <option value="2">2 (흑백)</option>
+                <option value="4">4</option>
+                <option value="8" selected>8</option>
+                <option value="16">16</option>
+                <option value="32">32</option>
+              </select>
+            </div>
+            <div>
+              <label class="field" for="traceDetail">디테일</label>
+              <select id="traceDetail">
+                <option value="loose">부드럽게 (path 적음)</option>
+                <option value="normal" selected>보통</option>
+                <option value="fine">세밀하게 (path 많음)</option>
+              </select>
+            </div>
+          </div>
+          <div class="hint" style="margin-top:8px;">트레이싱은 처리 속도를 위해 가로/세로 최대 1000px로 자동 축소 후 변환합니다.</div>
+        </div>
+
+        <div class="notice" id="embedNote" style="display:none;">
+          <b>SVG Embed</b>는 변환 없이 원본 이미지를 감싸므로 파일 용량은 원본과 비슷하거나 약 33% 큽니다(base64 오버헤드).
+        </div>
+
+        <div class="row" style="margin-top:16px;">
+          <button class="btn primary" id="convertBtn" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg>
+            <span class="btn-label">SVG로 변환</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- result -->
+      <div class="card">
+        <h2><span class="step">2</span> 결과</h2>
+        <div class="preview" id="imgPreview" aria-live="polite">
+          <div class="placeholder">이미지를 올리고 변환하면 결과가 여기에 표시됩니다.</div>
+        </div>
+        <div class="meta hidden" id="imgMeta"></div>
+        <div class="row" style="margin-top:14px;">
+          <button class="btn primary" id="dlConverted" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 11l4 4 4-4"/><path d="M4 21h16"/></svg>
+            SVG 다운로드
+          </button>
+          <button class="btn ghost" id="dlConvertedPng" disabled>PNG로 저장</button>
+          <button class="btn ghost" id="viewConvertedCode" disabled aria-pressed="false">코드 보기</button>
+        </div>
+        <textarea class="code hidden" id="convertedCode" readonly spellcheck="false" style="margin-top:12px;"></textarea>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site">
+    <div>모든 처리는 브라우저 안에서만 이루어지며, 어떤 파일도 서버로 전송되지 않습니다.</div>
+    <div>벡터 트레이싱: <a href="https://github.com/jankovicsandras/imagetracerjs" target="_blank" rel="noopener">ImageTracer.js</a> (Unlicense) · <a href="#" id="footRepo" target="_blank" rel="noopener">소스 코드</a></div>
+  </footer>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- ImageTracer.js (Unlicense / public domain) — pinned with Subresource Integrity.
+     Hash verified byte-identical to the canonical npm registry tarball v1.2.6. -->
+<script src="https://cdn.jsdelivr.net/npm/imagetracerjs@1.2.6/imagetracer_v1.2.6.js"
+        integrity="sha384-YcOTH4/N9eULF5JC2kvcrQ7ZDfV1VOCErlPHqmUk77bzeZN9vJbYsi2gM8bJHgWc"
+        crossorigin="anonymous"></script>
+<script>
+"use strict";
+(function () {
+  // ---------- repo link (best-effort from GitHub Pages host) ----------
+  (function setRepo() {
+    var host = location.hostname, path = location.pathname;
+    if (host.endsWith("github.io")) {
+      var user = host.split(".")[0];
+      var repo = path.split("/").filter(Boolean)[0] || "tool-svg-utils";
+      var url = "https://github.com/" + user + "/" + repo;
+      var a = document.getElementById("repoLink"); if (a) a.href = url;
+      var f = document.getElementById("footRepo"); if (f) f.href = url;
+    } else {
+      var def = "https://github.com/";
+      document.getElementById("repoLink").href = def;
+      document.getElementById("footRepo").href = def;
+    }
+  })();
+
+  // ---------- helpers ----------
+  var $ = function (id) { return document.getElementById(id); };
+  var toastEl = $("toast"), toastTimer = null;
+  function toast(msg, isErr) {
+    toastEl.textContent = msg;
+    toastEl.className = "toast show" + (isErr ? " err" : "");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.className = "toast"; }, 2600);
+  }
+  function humanSize(bytes) {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / 1024 / 1024).toFixed(2) + " MB";
+  }
+  function byteLen(str) { return new Blob([str]).size; }
+  function download(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+  }
+  function setupDrop(dropEl, inputEl, accept, onFile) {
+    dropEl.addEventListener("click", function () { inputEl.click(); });
+    dropEl.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); inputEl.click(); }
+    });
+    inputEl.addEventListener("change", function () {
+      if (inputEl.files && inputEl.files[0]) onFile(inputEl.files[0]);
+    });
+    ["dragenter", "dragover"].forEach(function (ev) {
+      dropEl.addEventListener(ev, function (e) { e.preventDefault(); dropEl.classList.add("over"); });
+    });
+    ["dragleave", "drop"].forEach(function (ev) {
+      dropEl.addEventListener(ev, function (e) { e.preventDefault(); dropEl.classList.remove("over"); });
+    });
+    dropEl.addEventListener("drop", function (e) {
+      var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) onFile(f);
+    });
+  }
+
+  // ---------- tabs ----------
+  var tabBtns = document.querySelectorAll(".tab");
+  tabBtns.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      tabBtns.forEach(function (b) { b.setAttribute("aria-selected", "false"); });
+      btn.setAttribute("aria-selected", "true");
+      document.querySelectorAll(".panel").forEach(function (p) { p.classList.remove("active"); });
+      $("panel-" + btn.dataset.tab).classList.add("active");
+    });
+  });
+
+  /* ============================================================
+     TAB 1 — SVG viewer / export
+  ============================================================ */
+  var svgInput = $("svgInput"), svgPreview = $("svgPreview"), svgMeta = $("svgMeta");
+  var currentSvg = "";
+
+  var SAMPLE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">\n' +
+    '  <rect width="200" height="200" rx="24" fill="#3D6B5E"/>\n' +
+    '  <circle cx="100" cy="78" r="38" fill="#F7F5F0"/>\n' +
+    '  <path d="M40 168c0-33 27-52 60-52s60 19 60 52z" fill="#F7F5F0"/>\n' +
+    '</svg>';
+
+  function parseSvgSize(svgStr) {
+    try {
+      var doc = new DOMParser().parseFromString(svgStr, "image/svg+xml");
+      if (doc.querySelector("parsererror")) return null;
+      var el = doc.documentElement;
+      if (!el || el.nodeName.toLowerCase() !== "svg") return null;
+      var w = parseFloat(el.getAttribute("width"));
+      var h = parseFloat(el.getAttribute("height"));
+      var vb = el.getAttribute("viewBox");
+      if ((!w || !h) && vb) {
+        var p = vb.trim().split(/[\s,]+/).map(Number);
+        if (p.length === 4) { w = w || p[2]; h = h || p[3]; }
+      }
+      return { w: w || 300, h: h || 150, el: el, hasIntrinsic: !!(w && h) || !!vb };
+    } catch (e) { return null; }
+  }
+
+  function renderSvg() {
+    var str = svgInput.value.trim();
+    currentSvg = str;
+    var hasContent = str.length > 0;
+    ["dlPng", "dlJpg", "dlSvg", "toggleCode"].forEach(function (id) { $(id).disabled = !hasContent; });
+
+    if (!hasContent) {
+      svgPreview.innerHTML = '<div class="placeholder">SVG를 불러오면 여기에 표시됩니다.</div>';
+      svgMeta.classList.add("hidden");
+      updateOutDim();
+      return;
+    }
+    var info = parseSvgSize(str);
+    if (!info) {
+      svgPreview.innerHTML = '<div class="placeholder" style="color:var(--danger)">유효한 SVG가 아닙니다. 코드를 확인해 주세요.</div>';
+      svgMeta.classList.add("hidden");
+      ["dlPng", "dlJpg"].forEach(function (id) { $(id).disabled = true; });
+      return;
+    }
+    // Render via <img> + data URI so any <script>/onload inside user SVG cannot execute (XSS-safe).
+    var safeStr = /xmlns=/.test(str) ? str : str.replace(/<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+    svgPreview.innerHTML = "";
+    var pim = document.createElement("img");
+    pim.alt = "SVG 미리보기";
+    pim.style.maxHeight = "320px";
+    pim.onerror = function () { svgPreview.innerHTML = '<div class="placeholder" style="color:var(--danger)">미리보기를 렌더링할 수 없습니다.</div>'; };
+    pim.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(safeStr);
+    svgPreview.appendChild(pim);
+    svgMeta.classList.remove("hidden");
+    svgMeta.innerHTML = '<span><b>크기</b> ' + Math.round(info.w) + ' × ' + Math.round(info.h) + ' px</span>' +
+      '<span><b>코드 용량</b> ' + humanSize(byteLen(str)) + '</span>';
+    updateOutDim();
+  }
+
+  function currentOutDim() {
+    var info = parseSvgSize(currentSvg) || { w: 300, h: 150 };
+    var mode = $("pngScale").value;
+    var w, h;
+    if (mode === "custom") {
+      w = Math.max(1, parseInt($("customWidth").value, 10) || 1);
+      h = Math.round(w * (info.h / info.w));
+    } else {
+      var s = parseFloat(mode);
+      w = Math.round(info.w * s); h = Math.round(info.h * s);
+    }
+    return { w: w, h: h };
+  }
+  function updateOutDim() {
+    if (!currentSvg) { $("outDimWrap").textContent = ""; return; }
+    var d = currentOutDim();
+    $("outDimWrap").textContent = "출력: " + d.w + " × " + d.h + " px";
+  }
+
+  function rasterize(format, quality) {
+    var str = currentSvg;
+    var info = parseSvgSize(str);
+    if (!info) { toast("유효한 SVG가 아닙니다.", true); return; }
+    var dim = currentOutDim();
+    // ensure xmlns present for Image() decoding
+    if (!/xmlns=/.test(str)) str = str.replace(/<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+    var url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(str);
+    var img = new Image();
+    img.onload = function () {
+      var canvas = document.createElement("canvas");
+      canvas.width = dim.w; canvas.height = dim.h;
+      var ctx = canvas.getContext("2d");
+      if (format === "image/jpeg") { ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, dim.w, dim.h); }
+      ctx.drawImage(img, 0, 0, dim.w, dim.h);
+      try {
+        canvas.toBlob(function (blob) {
+          if (!blob) { toast("변환 실패", true); return; }
+          var ext = format === "image/jpeg" ? "jpg" : "png";
+          download(blob, "svg-export_" + dim.w + "x" + dim.h + "." + ext);
+          toast(ext.toUpperCase() + " 다운로드 완료 · " + humanSize(blob.size));
+        }, format, quality);
+      } catch (e) { toast("브라우저가 이 SVG의 변환을 차단했습니다 (보안 정책).", true); }
+    };
+    img.onerror = function () { toast("SVG 렌더링에 실패했습니다. 외부 리소스 참조가 있는지 확인하세요.", true); };
+    img.src = url;
+  }
+
+  svgInput.addEventListener("input", renderSvg);
+  $("svgClear").addEventListener("click", function () { svgInput.value = ""; renderSvg(); });
+  $("svgSample").addEventListener("click", function () { svgInput.value = SAMPLE; renderSvg(); });
+  $("pngScale").addEventListener("change", function () {
+    $("customWidthWrap").classList.toggle("hidden", this.value !== "custom");
+    updateOutDim();
+  });
+  $("customWidth").addEventListener("input", updateOutDim);
+  $("dlPng").addEventListener("click", function () { rasterize("image/png"); });
+  $("dlJpg").addEventListener("click", function () { rasterize("image/jpeg", 0.92); });
+  $("dlSvg").addEventListener("click", function () {
+    download(new Blob([currentSvg], { type: "image/svg+xml" }), "image.svg");
+    toast("SVG 저장 완료");
+  });
+  $("toggleCode").addEventListener("click", function () {
+    var on = this.getAttribute("aria-pressed") === "true";
+    svgInput.classList.toggle("hidden", on);
+    this.setAttribute("aria-pressed", on ? "false" : "true");
+    this.textContent = on ? "코드 보기" : "코드 숨기기";
+  });
+
+  setupDrop($("svgDrop"), $("svgFile"), ".svg", function (file) {
+    if (!/svg/.test(file.type) && !/\.svg$/i.test(file.name)) { toast("SVG 파일만 업로드할 수 있어요.", true); return; }
+    var reader = new FileReader();
+    reader.onload = function (e) { svgInput.value = e.target.result; renderSvg(); toast("SVG 불러옴: " + file.name); };
+    reader.readAsText(file);
+  });
+
+  /* ============================================================
+     TAB 2 — image -> SVG
+  ============================================================ */
+  var imgFileObj = null, imgDataUrl = null, imgNatW = 0, imgNatH = 0;
+  var convertedSvg = "", method = "trace";
+  var imgPreview = $("imgPreview"), imgMeta = $("imgMeta");
+
+  function selectMethod(m) {
+    method = m;
+    $("m-trace").setAttribute("aria-pressed", m === "trace" ? "true" : "false");
+    $("m-embed").setAttribute("aria-pressed", m === "embed" ? "true" : "false");
+    $("traceOpts").style.display = m === "trace" ? "" : "none";
+    $("embedNote").style.display = m === "embed" ? "" : "none";
+    document.querySelector("#convertBtn .btn-label").textContent = m === "trace" ? "SVG로 변환 (트레이싱)" : "SVG로 감싸기 (Embed)";
+  }
+  $("m-trace").addEventListener("click", function () { selectMethod("trace"); });
+  $("m-embed").addEventListener("click", function () { selectMethod("embed"); });
+  [$("m-trace"), $("m-embed")].forEach(function (el) {
+    el.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); el.click(); } });
+  });
+
+  // trace mode segmented (bw/color) syncs color count default
+  document.querySelectorAll("#traceMode button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      document.querySelectorAll("#traceMode button").forEach(function (x) { x.setAttribute("aria-pressed", "false"); });
+      b.setAttribute("aria-pressed", "true");
+      $("traceColors").value = b.dataset.mode === "bw" ? "2" : "8";
+    });
+  });
+
+  function loadImageFile(file) {
+    if (!/^image\//.test(file.type)) { toast("이미지 파일을 올려주세요.", true); return; }
+    imgFileObj = file;
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      imgDataUrl = e.target.result;
+      var im = new Image();
+      im.onload = function () {
+        imgNatW = im.naturalWidth; imgNatH = im.naturalHeight;
+        imgPreview.innerHTML = "";
+        var prev = new Image(); prev.src = imgDataUrl; prev.alt = "원본 미리보기";
+        imgPreview.appendChild(prev);
+        imgMeta.classList.remove("hidden");
+        imgMeta.innerHTML = '<span><b>원본</b> ' + imgNatW + ' × ' + imgNatH + ' px</span>' +
+          '<span><b>파일</b> ' + humanSize(file.size) + ' · ' + (file.type.split("/")[1] || "") + '</span>';
+        $("convertBtn").disabled = false;
+        ["dlConverted", "dlConvertedPng", "viewConvertedCode"].forEach(function (id) { $(id).disabled = true; });
+        convertedSvg = "";
+        toast("이미지 불러옴: " + file.name);
+      };
+      im.onerror = function () { toast("이미지를 읽을 수 없습니다.", true); };
+      im.src = imgDataUrl;
+    };
+    reader.readAsDataURL(file);
+  }
+  setupDrop($("imgDrop"), $("imgFile"), "image/*", loadImageFile);
+
+  function scaledCanvas(maxDim) {
+    var scale = Math.min(1, maxDim / Math.max(imgNatW, imgNatH));
+    var w = Math.max(1, Math.round(imgNatW * scale));
+    var h = Math.max(1, Math.round(imgNatH * scale));
+    var c = document.createElement("canvas"); c.width = w; c.height = h;
+    var img = imgPreview.querySelector("img");
+    var ctx = c.getContext("2d");
+    ctx.drawImage(img, 0, 0, w, h);
+    return c;
+  }
+
+  function detailOpts() {
+    var d = $("traceDetail").value;
+    if (d === "loose") return { ltres: 1, qtres: 1, pathomit: 16, blurradius: 1, blurdelta: 20 };
+    if (d === "fine") return { ltres: 0.5, qtres: 0.5, pathomit: 2, blurradius: 0 };
+    return { ltres: 1, qtres: 1, pathomit: 8, blurradius: 0 };
+  }
+
+  function doTrace() {
+    if (typeof ImageTracer === "undefined") {
+      toast("트레이싱 라이브러리를 불러오지 못했습니다. 네트워크를 확인하세요.", true);
+      return;
+    }
+    setBusy(true);
+    // defer so the spinner can paint
+    setTimeout(function () {
+      try {
+        var canvas = scaledCanvas(1000);
+        var ctx = canvas.getContext("2d");
+        var imgdata = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        var numcolors = parseInt($("traceColors").value, 10);
+        var opts = Object.assign({
+          numberofcolors: numcolors,
+          colorsampling: numcolors <= 2 ? 0 : 2,
+          mincolorratio: 0,
+          colorquantcycles: 3,
+          scale: 1,
+          roundcoords: 1,
+          viewbox: true,
+          desc: false
+        }, detailOpts());
+        var svg = ImageTracer.imagedataToSVG(imgdata, opts);
+        finishConvert(svg, canvas.width, canvas.height, "트레이싱");
+      } catch (e) {
+        console.error(e);
+        toast("트레이싱 중 오류가 발생했습니다.", true);
+      } finally { setBusy(false); }
+    }, 30);
+  }
+
+  function doEmbed() {
+    setBusy(true);
+    setTimeout(function () {
+      try {
+        var w = imgNatW, h = imgNatH;
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ' +
+          'width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '">\n' +
+          '  <image width="' + w + '" height="' + h + '" xlink:href="' + imgDataUrl + '"/>\n' +
+          '</svg>';
+        finishConvert(svg, w, h, "Embed");
+      } catch (e) { toast("변환 실패", true); }
+      finally { setBusy(false); }
+    }, 30);
+  }
+
+  function finishConvert(svg, w, h, label) {
+    convertedSvg = svg;
+    // Render result via <img> + data URI (consistent + script-safe).
+    imgPreview.innerHTML = "";
+    var rim = document.createElement("img");
+    rim.alt = "변환 결과 미리보기";
+    rim.style.maxHeight = "320px";
+    rim.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+    imgPreview.appendChild(rim);
+    imgMeta.classList.remove("hidden");
+    imgMeta.innerHTML = '<span><b>방식</b> ' + label + '</span>' +
+      '<span><b>출력</b> ' + w + ' × ' + h + ' px</span>' +
+      '<span><b>SVG 용량</b> ' + humanSize(byteLen(svg)) + '</span>';
+    $("convertedCode").value = svg;
+    ["dlConverted", "dlConvertedPng", "viewConvertedCode"].forEach(function (id) { $(id).disabled = false; });
+    toast(label + " 변환 완료 · " + humanSize(byteLen(svg)));
+  }
+
+  function setBusy(on) {
+    var btn = $("convertBtn");
+    btn.disabled = on || !imgFileObj;
+    var lbl = btn.querySelector(".btn-label");
+    var ico = btn.querySelector("svg");
+    if (on) {
+      if (ico) ico.style.display = "none";
+      if (!btn.querySelector(".spinner")) { var s = document.createElement("span"); s.className = "spinner"; btn.insertBefore(s, lbl); }
+      lbl.textContent = "변환 중…";
+    } else {
+      var sp = btn.querySelector(".spinner"); if (sp) sp.remove();
+      if (ico) ico.style.display = "";
+      selectMethod(method); // restore label
+    }
+  }
+
+  $("convertBtn").addEventListener("click", function () {
+    if (!imgFileObj) return;
+    if (method === "trace") doTrace(); else doEmbed();
+  });
+
+  $("dlConverted").addEventListener("click", function () {
+    download(new Blob([convertedSvg], { type: "image/svg+xml" }), "converted.svg");
+    toast("SVG 다운로드 완료");
+  });
+  $("dlConvertedPng").addEventListener("click", function () {
+    var info = parseSvgSize(convertedSvg) || { w: imgNatW, h: imgNatH };
+    var url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(convertedSvg);
+    var img = new Image();
+    img.onload = function () {
+      var c = document.createElement("canvas"); c.width = Math.round(info.w); c.height = Math.round(info.h);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(function (b) { if (b) { download(b, "converted.png"); toast("PNG 저장 완료"); } });
+    };
+    img.onerror = function () { toast("PNG 변환 실패", true); };
+    img.src = url;
+  });
+  $("viewConvertedCode").addEventListener("click", function () {
+    var on = this.getAttribute("aria-pressed") === "true";
+    $("convertedCode").classList.toggle("hidden", on);
+    this.setAttribute("aria-pressed", on ? "false" : "true");
+    this.textContent = on ? "코드 보기" : "코드 숨기기";
+  });
+
+  // init
+  selectMethod("trace");
+  if (typeof ImageTracer === "undefined") {
+    // give CDN a moment, then warn if still missing
+    window.addEventListener("load", function () {
+      setTimeout(function () {
+        if (typeof ImageTracer === "undefined") {
+          toast("트레이싱 라이브러리 로드 실패 — Embed 방식은 정상 동작합니다.", true);
+        }
+      }, 1500);
+    });
+  }
+})();
+</script>
+</body>
+</html>
