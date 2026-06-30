@@ -1020,20 +1020,26 @@ function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&
     setLang(pick);
   })();
 
-  // ---------- welcome guide (shows once per day) ----------
+  // ---------- welcome guide (onboarding modal) ----------
+  // Keys are prefixed with "svg" — all tools share the hanariago.github.io origin,
+  // so generic storage keys would collide across tools.
   (function guideInit() {
     var overlay = $("guideOverlay");
     function todayStr() { var x = new Date(); return x.getFullYear() + "-" + (x.getMonth() + 1) + "-" + x.getDate(); }
     function closeGuide() {
       if ($("guideDontShow").checked) { try { localStorage.setItem("svgGuideHideDate", todayStr()); } catch (e) {} }
+      try { sessionStorage.setItem("svgGuideSeen", "1"); } catch (e) {}
       overlay.classList.remove("show");
     }
     $("guideX").addEventListener("click", closeGuide);
     $("guideClose").addEventListener("click", closeGuide);
     overlay.addEventListener("click", function (e) { if (e.target === overlay) closeGuide(); });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape" && overlay.classList.contains("show")) closeGuide(); });
-    var hide = null; try { hide = localStorage.getItem("svgGuideHideDate"); } catch (e) {}
-    if (hide !== todayStr()) overlay.classList.add("show");
+    var hide = null, seen = null;
+    try { hide = localStorage.getItem("svgGuideHideDate"); } catch (e) {}
+    try { seen = sessionStorage.getItem("svgGuideSeen"); } catch (e) {}
+    // Show on the first visit of the day, unless dismissed-for-today or already seen this session.
+    if (hide !== todayStr() && !seen) overlay.classList.add("show");
   })();
 
   if (typeof ImageTracer === "undefined") {
