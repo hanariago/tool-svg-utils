@@ -255,6 +255,23 @@
   footer.site a { color: var(--point); text-decoration: none; border-bottom: 1px solid var(--border); }
   footer.site a:hover { color: var(--point-dark); }
 
+  /* Welcome guide modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(30,28,22,.45); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 100; }
+  .modal-overlay.show { display: flex; animation: fade .2s ease; }
+  .modal { background: var(--card); border-radius: 16px; max-width: 460px; width: 100%; padding: 24px 24px 18px; box-shadow: 0 20px 60px rgba(0,0,0,.28); position: relative; max-height: 88vh; overflow-y: auto; }
+  .modal-x { position: absolute; top: 13px; right: 13px; width: 30px; height: 30px; border: none; background: transparent; font-size: 22px; line-height: 1; color: var(--muted); cursor: pointer; border-radius: 8px; transition: .12s; }
+  .modal-x:hover { background: #EDEAE2; color: var(--text); }
+  .modal-title { font-size: 18px; font-weight: 700; margin: 2px 30px 8px 0; letter-spacing: -.01em; }
+  .modal-intro { font-size: 13px; color: var(--muted); margin: 0 0 16px; line-height: 1.65; }
+  .modal-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+  .modal-list li { display: flex; gap: 11px; align-items: flex-start; }
+  .modal-list .ic { flex: none; width: 30px; height: 30px; border-radius: 9px; background: var(--point-tint); display: grid; place-items: center; font-size: 15px; }
+  .modal-list .tx b { display: block; font-size: 13.5px; margin-bottom: 1px; }
+  .modal-list .tx span { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+  .modal-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); gap: 12px; flex-wrap: wrap; }
+  .modal-dontshow { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); cursor: pointer; user-select: none; }
+  .modal-dontshow input { width: 15px; height: 15px; accent-color: var(--point); cursor: pointer; margin: 0; }
+
   @media (max-width: 720px) {
     .wrap { padding: 16px 14px 50px; }
     .cols { grid-template-columns: 1fr; gap: 14px; }
@@ -483,6 +500,20 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<!-- Welcome guide -->
+<div class="modal-overlay" id="guideOverlay" role="dialog" aria-modal="true" aria-labelledby="guideTitle">
+  <div class="modal">
+    <button class="modal-x" id="guideX" aria-label="Close">&times;</button>
+    <h2 class="modal-title" id="guideTitle">SVG 유틸 사용 가이드</h2>
+    <p class="modal-intro" id="guideIntro"></p>
+    <ul class="modal-list" id="guideList"></ul>
+    <div class="modal-foot">
+      <label class="modal-dontshow"><input type="checkbox" id="guideDontShow"> <span id="guideDontShowLbl">오늘 다시 보지 않기</span></label>
+      <button class="btn primary" id="guideClose">닫기</button>
+    </div>
+  </div>
+</div>
+
 <!-- ImageTracer.js (Unlicense / public domain) — pinned with Subresource Integrity.
      Hash verified byte-identical to the canonical npm registry tarball v1.2.6. -->
 <script src="https://cdn.jsdelivr.net/npm/imagetracerjs@1.2.6/imagetracer_v1.2.6.js"
@@ -539,6 +570,14 @@ var I18N = {
     to_libFallback: "트레이싱 라이브러리 로드 실패 — Embed 방식은 정상 동작합니다.",
     footerTag: "모든 처리는 브라우저 안에서만 이루어지며, 어떤 파일도 서버로 전송되지 않습니다.",
     license: "오픈소스 · MIT 라이선스", hubLink: "🔧 다른 도구 모음 →", creditTrace: "벡터 트레이싱: ",
+    guideTitle: "SVG 유틸 사용 가이드",
+    guideIntro: "이 도구로 할 수 있는 일이에요. 모든 처리는 브라우저 안에서만 이루어지고, 어떤 파일도 서버로 전송되지 않습니다.",
+    guideList: [
+      { ic: "👁️", h: "SVG 미리보기 & 내보내기", d: "SVG 파일을 올리거나 코드를 붙여넣어 바로 확인하고, 원하는 해상도로 PNG·JPG로 저장하세요." },
+      { ic: "🔷", h: "이미지를 SVG로 변환", d: "PNG·JPG를 벡터 트레이싱(로고·아이콘·흑백)하거나, 원본을 그대로 담는 embed(컬러 사진)로 변환해요." },
+      { ic: "🌐", h: "한국어 · English", d: "오른쪽 위에서 언어를 바꿀 수 있어요." }
+    ],
+    guideDontShow: "오늘 다시 보지 않기", guideClose: "닫기",
     intro: "SVG 변환기는 SVG 파일을 브라우저에서 바로 미리보고 PNG·JPG로 저장하거나, PNG·JPG 이미지를 SVG로 변환하는 무료 온라인 도구입니다. SVG를 업로드하거나 코드를 붙여넣으면 실시간으로 렌더링되고, 원하는 해상도로 PNG/JPG를 내려받을 수 있습니다. 이미지는 윤곽을 벡터로 따는 '벡터 트레이싱'과 원본을 그대로 담는 'SVG embed' 두 방식으로 변환할 수 있어, 로고·아이콘부터 컬러 사진까지 상황에 맞게 처리됩니다. 업로드한 파일은 서버로 전송되지 않습니다.",
     faqTitle: "자주 묻는 질문",
     faq: [
@@ -595,6 +634,14 @@ var I18N = {
     to_libFallback: "Tracing library failed to load — the Embed method still works.",
     footerTag: "Everything runs inside your browser; no file is ever sent to a server.",
     license: "Open source · MIT License", hubLink: "🔧 More tools →", creditTrace: "Vector tracing: ",
+    guideTitle: "SVG Utils — Quick guide",
+    guideIntro: "Here's what you can do. Everything runs inside your browser; no file is ever sent to a server.",
+    guideList: [
+      { ic: "👁️", h: "Preview & export SVG", d: "Upload an SVG or paste its code to view it instantly, then save as PNG·JPG at your chosen resolution." },
+      { ic: "🔷", h: "Convert images to SVG", d: "Vector-trace PNG·JPG (logos, icons, B&W) or embed the original as-is (color photos)." },
+      { ic: "🌐", h: "한국어 · English", d: "Switch language from the top-right." }
+    ],
+    guideDontShow: "Don't show again today", guideClose: "Close",
     intro: "SVG Converter is a free online tool to preview SVG files right in your browser and export them as PNG or JPG, or to convert PNG/JPG images into SVG. Upload an SVG or paste its code for a live render, then download PNG/JPG at your chosen resolution. Images can be converted two ways — 'vector tracing' that redraws outlines as vectors, and 'SVG embed' that keeps the original intact — covering everything from logos and icons to color photos. Uploaded files are never sent to a server.",
     faqTitle: "Frequently asked questions",
     faq: [
@@ -946,6 +993,12 @@ function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&
     $("introText").textContent = d.intro;
     $("faqTitle").textContent = d.faqTitle;
     $("faqList").innerHTML = d.faq.map(function (it) { return '<details><summary>' + esc(it.q) + '</summary><div class="faq-a">' + esc(it.a) + '</div></details>'; }).join("");
+    // welcome guide
+    $("guideTitle").textContent = d.guideTitle;
+    $("guideIntro").textContent = d.guideIntro;
+    $("guideList").innerHTML = d.guideList.map(function (it) { return '<li><span class="ic">' + it.ic + '</span><span class="tx"><b>' + esc(it.h) + '</b><span>' + esc(it.d) + '</span></span></li>'; }).join("");
+    $("guideDontShowLbl").textContent = d.guideDontShow;
+    $("guideClose").textContent = d.guideClose;
     var ml = document.querySelector('meta[property="og:locale"]'); if (ml) ml.setAttribute("content", LOCALE[lang] || "ko_KR");
     var sel = $("langSelect"); if (sel) sel.value = lang;
     try { localStorage.setItem("svgLang", lang); } catch (e) {}
@@ -965,6 +1018,22 @@ function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&
     var nav = (navigator.language || "ko").slice(0, 2).toLowerCase();
     var pick = [param, saved, nav, "ko"].find(function (l) { return l && I18N[l]; }) || "ko";
     setLang(pick);
+  })();
+
+  // ---------- welcome guide (shows once per day) ----------
+  (function guideInit() {
+    var overlay = $("guideOverlay");
+    function todayStr() { var x = new Date(); return x.getFullYear() + "-" + (x.getMonth() + 1) + "-" + x.getDate(); }
+    function closeGuide() {
+      if ($("guideDontShow").checked) { try { localStorage.setItem("svgGuideHideDate", todayStr()); } catch (e) {} }
+      overlay.classList.remove("show");
+    }
+    $("guideX").addEventListener("click", closeGuide);
+    $("guideClose").addEventListener("click", closeGuide);
+    overlay.addEventListener("click", function (e) { if (e.target === overlay) closeGuide(); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && overlay.classList.contains("show")) closeGuide(); });
+    var hide = null; try { hide = localStorage.getItem("svgGuideHideDate"); } catch (e) {}
+    if (hide !== todayStr()) overlay.classList.add("show");
   })();
 
   if (typeof ImageTracer === "undefined") {
